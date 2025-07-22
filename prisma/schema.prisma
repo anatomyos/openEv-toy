@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres@localhost:5432/medical_search_db?schema=public"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  role          Role      @default(USER)
+  searches      Search[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model MedicalArticle {
+  id          String    @id @default(cuid())
+  title       String    @unique
+  abstract    String    @db.Text
+  authors     String[]
+  keywords    String[]
+  publishDate DateTime
+  source      String
+  url         String?
+  searches    Search[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Search {
+  id              String        @id @default(cuid())
+  query           String
+  user            User          @relation(fields: [userId], references: [id])
+  userId          String
+  articles        MedicalArticle[]
+  aiSummary       String?       @db.Text
+  createdAt       DateTime      @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+}
