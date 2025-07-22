@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/app/lib/prisma';
 
 interface MedicalArticle {
@@ -20,7 +21,7 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -94,4 +95,4 @@ Keep the summary focused on the most important insights that would be valuable f
       { status: 500 }
     );
   }
-} 
+}
