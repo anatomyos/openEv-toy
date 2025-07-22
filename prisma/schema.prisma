@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../app/generated/prisma"
 }
 
 datasource db {
@@ -47,6 +46,29 @@ model Search {
   articles        MedicalArticle[]
   aiSummary       String?       @db.Text
   createdAt       DateTime      @default(now())
+}
+
+model Ad {
+  id            String         @id @default(cuid())
+  advertiser    User           @relation(fields: [advertiserId], references: [id])
+  advertiserId  String
+  keywords      String[]
+  budget        Float
+  isActive     Boolean        @default(true)
+  clicks        Int            @default(0)
+  impressions   AdImpression[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model AdImpression {
+  id        String   @id @default(cuid())
+  ad        Ad       @relation(fields: [adId], references: [id])
+  adId      String
+  search    Search   @relation(fields: [searchId], references: [id])
+  searchId  String
+  clicked   Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 enum Role {
