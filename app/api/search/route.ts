@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import openai from '@/src/lib/openai';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/app/lib/prisma';
@@ -15,9 +15,6 @@ interface MedicalArticle {
   url?: string;
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 export async function POST(request: Request) {
   try {
@@ -31,20 +28,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    // Search for articles
-    const articles = await prisma.medicalArticle.findMany({
+    // Use OpenAI to extract relevant keywords from the query
+    const keywordExtraction = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'Extract relevant medical keywords as a comma separated list.',
+        },
+        { role: 'user', content: query },
+      ],
+      temperature: 0.3,
+    });
+
+    const keywords =
+      keywordExtraction.choices[0].message.content
+        ?.split(',')
+        .map((k) => k.trim()) || [];
+
+    // Search for articles using the extracted keywords
+    const articles = (await prisma.medicalArticle.findMany({
       where: {
         OR: [
           { title: { contains: query, mode: 'insensitive' } },
           { abstract: { contains: query, mode: 'insensitive' } },
-          { keywords: { hasSome: query.split(' ') } },
+          { keywords: { hasSome: keywords.length ? keywords : query.split(' ') } },
         ],
       },
       orderBy: {
         publishDate: 'desc',
       },
       take: 10,
-    }) as MedicalArticle[];
+    })) as MedicalArticle[];
 
     // Generate AI summary if articles are found
     let aiSummary = null;
