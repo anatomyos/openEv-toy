@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "prisma generate && next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -14,12 +14,12 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "^6.8.2",
+    "@prisma/client": "^6.12.0",
     "@tailwindcss/forms": "^0.5.10",
     "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
     "chart.js": "^4.4.9",
-    "next": "15.3.2",
+    "next": "^15.4.3",
     "next-auth": "^4.24.11",
     "openai": "^4.103.0",
     "react": "^19.0.0",
@@ -35,15 +35,14 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
-    "prisma": "^6.8.2",
+    "prisma": "^6.12.0",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   },
-
   "pnpm": {
     "onlyBuiltDependencies": [
-        "@prisma/client"
+      "@prisma/client"
     ]
   }
 }
