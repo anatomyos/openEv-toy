@@ -22,12 +22,14 @@ export default function SearchInterface() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<SearchResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
 
     setIsLoading(true);
+    setError(null);
     try {
       const response = await fetch('/api/search', {
         method: 'POST',
@@ -38,13 +40,15 @@ export default function SearchInterface() {
       });
 
       if (!response.ok) {
-        throw new Error('Search failed');
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Search failed');
       }
 
       const data = await response.json();
       setResults(data);
     } catch (error) {
       console.error('Search error:', error);
+      setError(error instanceof Error ? error.message : 'Search failed');
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +74,12 @@ export default function SearchInterface() {
           </button>
         </div>
       </form>
+
+      {error && (
+        <p className="mb-4 text-red-600" role="alert">
+          {error}
+        </p>
+      )}
 
       {results && (
         <div className="space-y-6">
