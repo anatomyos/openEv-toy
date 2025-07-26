@@ -16,7 +16,10 @@ bun dev
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and set `OPENAI_API_KEY` with your OpenAI API key.
+Copy `.env.example` to `.env` and set the following variables:
+
+- `OPENAI_API_KEY` with your OpenAI API key
+- `NEXTAUTH_SECRET` with a random string used to encrypt NextAuth sessions
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
