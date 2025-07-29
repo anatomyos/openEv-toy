@@ -16,7 +16,7 @@ export async function GET(req: Request) {
       _sum: { clicked: true },
     });
     return NextResponse.json({ metrics });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 });
   }
 }

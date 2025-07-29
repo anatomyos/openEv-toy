@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       data: matchingAds.map((ad) => ({ adId: ad.id, searchId, clicked: false })),
     });
     return NextResponse.json({ ads: matchingAds });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to match ads' }, { status: 500 });
   }
 }
