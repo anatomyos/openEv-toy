@@ -56,6 +56,29 @@ async function main() {
     });
   }
 
+  // Seed basic ads
+  await prisma.ad.upsert({
+    where: { id: 'cf-ad' },
+    update: {},
+    create: {
+      id: 'cf-ad',
+      advertiserId: admin.id,
+      keywords: ['cystic fibrosis'],
+      budget: 100,
+    },
+  });
+
+  await prisma.ad.upsert({
+    where: { id: 'generic-ad' },
+    update: {},
+    create: {
+      id: 'generic-ad',
+      advertiserId: admin.id,
+      keywords: ['generic drugs'],
+      budget: 100,
+    },
+  });
+
   console.log('Database has been seeded. 🌱');
 }
 

@@ -28,81 +28,89 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    // Use OpenAI to extract relevant keywords from the query
+    // extract keywords from the query
     const keywordExtraction = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
-        {
-          role: 'system',
-          content: 'Extract relevant medical keywords as a comma separated list.',
-        },
+        { role: 'system', content: 'Extract relevant medical keywords as a comma separated list.' },
         { role: 'user', content: query },
       ],
       temperature: 0.3,
     });
 
     const keywords =
-      keywordExtraction.choices[0].message.content
-        ?.split(',')
-        .map((k) => k.trim()) || [];
+      keywordExtraction.choices[0].message.content?.split(',').map((k) => k.trim()) || [];
 
-    // Search for articles using the extracted keywords
-    const articles = (await prisma.medicalArticle.findMany({
-      where: {
-        OR: [
-          { title: { contains: query, mode: 'insensitive' } },
-          { abstract: { contains: query, mode: 'insensitive' } },
-          { keywords: { hasSome: keywords.length ? keywords : query.split(' ') } },
-        ],
-      },
-      orderBy: {
-        publishDate: 'desc',
-      },
-      take: 10,
-    })) as MedicalArticle[];
+    // ask OpenAI for recent articles related to the query
+    const searchPrompt = `You are a medical research assistant. Provide a JSON array of up to 5 articles from reputable online research journals or the newest American Medical Association guidelines that best match the following query: "${query}". Respond with JSON only and include for each item the fields title, abstract, authors (array), keywords (array), publishDate (ISO 8601 date), source, and url.`;
 
-    // Generate AI summary if articles are found
-    let aiSummary = null;
+    const articleResponse = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages: [{ role: 'user', content: searchPrompt }],
+      temperature: 0.3,
+      max_tokens: 1000,
+    });
+
+    const articleContent = articleResponse.choices[0].message.content || '[]';
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(articleContent);
+    } catch (e) {
+      console.error('Failed to parse article response', e, articleContent);
+      parsed = [];
+    }
+
+    const articles: MedicalArticle[] = [];
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        try {
+          const stored = await prisma.medicalArticle.upsert({
+            where: { title: item.title },
+            update: {},
+            create: {
+              title: item.title,
+              abstract: item.abstract,
+              authors: item.authors || [],
+              keywords: item.keywords || [],
+              publishDate: item.publishDate ? new Date(item.publishDate) : new Date(),
+              source: item.source || 'unknown',
+              url: item.url || undefined,
+            },
+          });
+          articles.push(stored);
+        } catch (e) {
+          console.error('Failed to store article', e);
+        }
+      }
+    }
+
+    let aiSummary: string | null = null;
     if (articles.length > 0) {
-      const prompt = `Analyze and summarize these medical research findings:
-
-${articles.map((a: MedicalArticle) => `Title: ${a.title}\nAbstract: ${a.abstract}`).join('\n\n')}
-
-Please provide a comprehensive yet digestible summary that:
-1. Highlights the key findings from each study
-2. Identifies common themes or patterns across the studies
-3. Explains the practical implications for medical practice
-4. Uses clear, accessible language while maintaining scientific accuracy
-5. Organizes the information in a logical flow
-
-Keep the summary focused on the most important insights that would be valuable for medical professionals.`;
+      const summaryPrompt = `Please summarize the following articles in clear and accessible language. Highlight any practical management steps or clinical implications. Maintain scientific accuracy:\n\n${articles
+        .map((a) => `Title: ${a.title}\nAbstract: ${a.abstract}`)
+        .join('\n\n')}\n\nConcise summary:`;
 
       const completion = await openai.chat.completions.create({
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: summaryPrompt }],
         model: 'gpt-4-turbo-preview',
         temperature: 0.3,
         max_tokens: 800,
       });
 
-      aiSummary = completion.choices[0]?.message?.content;
+      aiSummary = completion.choices[0]?.message?.content || null;
     }
 
-    // Save the search
+    // record the search for history
     await prisma.search.create({
       data: {
         query,
         userId: session.user.id,
         aiSummary,
-        articles: {
-          connect: articles.map((article: MedicalArticle) => ({ id: article.id })),
-        },
+        articles: { connect: articles.map((a) => ({ id: a.id })) },
       },
     });
 
-    return NextResponse.json({
-      articles,
-      aiSummary,
-    });
+    return NextResponse.json({ articles, aiSummary, keywords });
   } catch (error) {
     console.error('Search error:', error);
     return NextResponse.json(
