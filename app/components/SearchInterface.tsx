@@ -2,22 +2,18 @@
 
 import { useState, useEffect } from 'react';
 
-interface MedicalArticle {
+interface Citation {
   id: string;
   title: string;
-  abstract: string;
-  authors: string[];
-  keywords: string[];
-  publishDate: Date;
-  source: string;
   url?: string;
 }
 
 interface SearchResult {
   query?: string;
-  articles: MedicalArticle[];
+  articles: Citation[];
   aiSummary?: string;
   keywords: string[];
+  rawArticleContent?: string | null;
 }
 
 interface Ad {
@@ -159,44 +155,32 @@ export default function SearchInterface() {
             <div>
               <h3 className="text-lg font-semibold mb-4">Search Results</h3>
               {results.articles.length > 0 ? (
-                <div className="space-y-4">
+                <ol className="list-decimal list-inside space-y-2">
                   {results.articles.map((article) => (
-                    <details
-                      key={article.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
-                    >
-                      <summary className="cursor-pointer text-lg font-medium mb-2">
-                        {article.title}
-                      </summary>
-                      <p className="text-gray-600 mb-2">{article.abstract}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {article.keywords.map((keyword: string, index: number) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 text-sm rounded"
-                          >
-                            {keyword}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="mt-2 text-sm text-gray-500">
-                        <span>Published: {new Date(article.publishDate).toLocaleDateString()}</span>
-                        {article.url && (
-                          <a
-                            href={article.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="ml-4 text-blue-600 hover:underline"
-                          >
-                            View Source
-                          </a>
-                        )}
-                      </div>
-                    </details>
+                    <li key={article.id}>
+                      {article.url ? (
+                        <a
+                          href={article.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {article.title}
+                        </a>
+                      ) : (
+                        article.title
+                      )}
+                    </li>
                   ))}
-                </div>
+                </ol>
               ) : (
-                <p className="text-gray-500">No public articles</p>
+                results.aiSummary || results.rawArticleContent ? (
+                  <p className="text-gray-500 whitespace-pre-line">
+                    {results.rawArticleContent || results.aiSummary}
+                  </p>
+                ) : (
+                  <p className="text-gray-500">No public articles</p>
+                )
               )}
             </div>
           </div>

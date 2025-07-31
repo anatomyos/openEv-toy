@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       take: 3,
     });
     await prisma.adImpression.createMany({
-      data: matchingAds.map((ad) => ({ adId: ad.id, searchId, clicked: false })),
+      data: matchingAds.map((ad: { id: string }) => ({ adId: ad.id, searchId, clicked: false })),
     });
     return NextResponse.json({ ads: matchingAds });
   } catch {
