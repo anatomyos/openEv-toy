@@ -68,12 +68,14 @@ export async function POST(request: Request) {
     });
 
     const articleContent = articleResponse.choices[0].message.content || '{}';
+
     let parsedArticles: IncomingArticle[] = [];
     let rawArticleContent: string | null = null;
     try {
       const { articles = [] } = JSON.parse(articleContent) as {
         articles?: IncomingArticle[];
       };
+
       parsedArticles = Array.isArray(articles) ? articles : [];
     } catch (e) {
       console.error('Failed to parse article response', e, articleContent);

@@ -157,6 +157,7 @@ export default function SearchInterface() {
               {results.articles.length > 0 ? (
                 <ol className="list-decimal list-inside space-y-2">
                   {results.articles.map((article) => (
+             
                     <li key={article.id}>
                       {article.url ? (
                         <a
