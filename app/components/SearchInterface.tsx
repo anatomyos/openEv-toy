@@ -156,7 +156,8 @@ export default function SearchInterface() {
               <h3 className="text-lg font-semibold mb-4">Search Results</h3>
               {results.articles.length > 0 ? (
                 <ol className="list-decimal list-inside space-y-2">
-                  {results.articles.map((article, idx) => (
+                  {results.articles.map((article) => (
+             
                     <li key={article.id}>
                       {article.url ? (
                         <a
