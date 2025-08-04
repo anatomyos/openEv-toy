@@ -25,6 +25,16 @@ interface IncomingArticle {
   url?: string;
 }
 
+interface IncomingArticle {
+  title: string;
+  abstract: string;
+  authors?: string[];
+  keywords?: string[];
+  publishDate?: string;
+  source?: string;
+  url?: string;
+}
+
 
 export async function POST(request: Request) {
   try {
