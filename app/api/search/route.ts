@@ -12,6 +12,16 @@ interface MedicalArticle {
   keywords: string[];
   publishDate: Date;
   source: string;
+  url: string | null;
+}
+
+interface IncomingArticle {
+  title: string;
+  abstract: string;
+  authors?: string[];
+  keywords?: string[];
+  publishDate?: string;
+  source?: string;
   url?: string;
 }
 
@@ -42,27 +52,32 @@ export async function POST(request: Request) {
       keywordExtraction.choices[0].message.content?.split(',').map((k) => k.trim()) || [];
 
     // ask OpenAI for recent articles related to the query
-    const searchPrompt = `You are a medical research assistant. Provide a JSON array of up to 5 articles from reputable online research journals or the newest American Medical Association guidelines that best match the following query: "${query}". Respond with JSON only and include for each item the fields title, abstract, authors (array), keywords (array), publishDate (ISO 8601 date), source, and url.`;
+    const searchPrompt = `You are a medical research assistant. Please respond with a comprehensive yet digestible summary to the \"${query}\". Keep the summary focused on the most important insights that would be valuable for medical professionals, citing up to 5 articles from reputable online research journals or the newest American Medical Association guidelines that best match \"${query}\" with the following requirements:\n\n1. Explains the practical implications for medical practice\n2. Uses clear, accessible language while maintaining scientific accuracy\n3. Organizes the information in a logical flow\n4. Provide a JSON array of up to 5 articles from reputable online research journals or the newest American Medical Association guidelines that best match the following query: \"${query}\" that were cited in the summary. Respond with JSON only and include for each item the fields title, abstract, authors (array), keywords (array), publishDate (ISO 8601 date), source, and url.`;
 
     const articleResponse = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview',
       messages: [{ role: 'user', content: searchPrompt }],
       temperature: 0.3,
       max_tokens: 1000,
+      response_format: { type: 'json_object' },
     });
 
-    const articleContent = articleResponse.choices[0].message.content || '[]';
-    let parsed: unknown;
+    const articleContent = articleResponse.choices[0].message.content || '{}';
+    let parsedArticles: IncomingArticle[] = [];
+    let rawArticleContent: string | null = null;
     try {
-      parsed = JSON.parse(articleContent);
+      const { articles = [] } = JSON.parse(articleContent) as {
+        articles?: IncomingArticle[];
+      };
+      parsedArticles = Array.isArray(articles) ? articles : [];
     } catch (e) {
       console.error('Failed to parse article response', e, articleContent);
-      parsed = [];
+      rawArticleContent = articleContent;
     }
 
     const articles: MedicalArticle[] = [];
-    if (Array.isArray(parsed)) {
-      for (const item of parsed) {
+    if (Array.isArray(parsedArticles)) {
+      for (const item of parsedArticles) {
         try {
           const stored = await prisma.medicalArticle.upsert({
             where: { title: item.title },
@@ -70,11 +85,11 @@ export async function POST(request: Request) {
             create: {
               title: item.title,
               abstract: item.abstract,
-              authors: item.authors || [],
-              keywords: item.keywords || [],
+              authors: item.authors ?? [],
+              keywords: item.keywords ?? [],
               publishDate: item.publishDate ? new Date(item.publishDate) : new Date(),
-              source: item.source || 'unknown',
-              url: item.url || undefined,
+              source: item.source ?? 'unknown',
+              url: item.url ?? undefined,
             },
           });
           articles.push(stored);
@@ -110,7 +125,8 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ articles, aiSummary, keywords });
+    const citations = articles.map((a) => ({ id: a.id, title: a.title, url: a.url }));
+    return NextResponse.json({ articles: citations, aiSummary, keywords, rawArticleContent });
   } catch (error) {
     console.error('Search error:', error);
     return NextResponse.json(
