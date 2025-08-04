@@ -62,14 +62,42 @@ export async function POST(request: Request) {
       keywordExtraction.choices[0].message.content?.split(',').map((k) => k.trim()) || [];
 
     // ask OpenAI for recent articles related to the query
-    const searchPrompt = `You are a medical research assistant. Please respond with a comprehensive yet digestible summary to the \"${query}\". Keep the summary focused on the most important insights that would be valuable for medical professionals, citing up to 5 articles from reputable online research journals or the newest American Medical Association guidelines that best match \"${query}\" with the following requirements:\n\n1. Explains the practical implications for medical practice\n2. Uses clear, accessible language while maintaining scientific accuracy\n3. Organizes the information in a logical flow\n4. Provide a JSON array of up to 5 articles from reputable online research journals or the newest American Medical Association guidelines that best match the following query: \"${query}\" that were cited in the summary. Respond with JSON only and include for each item the fields title, abstract, authors (array), keywords (array), publishDate (ISO 8601 date), source, and url.`;
+    const searchPrompt = `Return up to 5 recent articles from reputable medical journals or the newest American Medical Association guidelines that best match the query "${query}". For each article include title, abstract (max three sentences), authors, keywords, publishDate (ISO 8601), source, and url. If any field is missing, use null or an empty array. Respond with JSON only.`;
 
     const articleResponse = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview',
       messages: [{ role: 'user', content: searchPrompt }],
       temperature: 0.3,
-      max_tokens: 1000,
-      response_format: { type: 'json_object' },
+      max_tokens: 2000,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'search_articles',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              articles: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    title: { type: 'string' },
+                    abstract: { type: 'string' },
+                    authors: { type: 'array', items: { type: 'string' } },
+                    keywords: { type: 'array', items: { type: 'string' } },
+                    publishDate: { type: 'string' },
+                    source: { type: 'string' },
+                    url: { type: 'string', nullable: true }
+                  },
+                  required: ['title', 'abstract']
+                }
+              }
+            },
+            required: ['articles']
+          }
+        }
+      }
     });
 
     const articleContent = articleResponse.choices[0].message.content || '{}';
