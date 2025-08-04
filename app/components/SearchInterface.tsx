@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
+import ReactMarkdown from 'react-markdown';
 interface Citation {
   id: string;
   title: string;
@@ -148,7 +148,9 @@ export default function SearchInterface() {
             {results.aiSummary && (
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="text-lg font-semibold mb-2">AI Summary</h3>
-                <p className="text-gray-700">{results.aiSummary}</p>
+                <div className="text-gray-700">
+                  <ReactMarkdown>{results.aiSummary}</ReactMarkdown>
+                </div>
               </div>
             )}
 
@@ -157,7 +159,6 @@ export default function SearchInterface() {
               {results.articles.length > 0 ? (
                 <ol className="list-decimal list-inside space-y-2">
                   {results.articles.map((article) => (
-             
                     <li key={article.id}>
                       {article.url ? (
                         <a
@@ -176,9 +177,11 @@ export default function SearchInterface() {
                 </ol>
               ) : (
                 results.aiSummary || results.rawArticleContent ? (
-                  <p className="text-gray-500 whitespace-pre-line">
-                    {results.rawArticleContent || results.aiSummary}
-                  </p>
+                  <div className="text-gray-500">
+                    <ReactMarkdown>
+                      {results.rawArticleContent || results.aiSummary || ''}
+                    </ReactMarkdown>
+                  </div>
                 ) : (
                   <p className="text-gray-500">No public articles</p>
                 )

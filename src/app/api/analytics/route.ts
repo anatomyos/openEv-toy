@@ -11,9 +11,11 @@ export async function GET(req: Request) {
     startDate.setDate(startDate.getDate() - daysAgo);
     const metrics = await prisma.adImpression.groupBy({
       by: ['createdAt'],
-      where: { ad: { advertiserId }, createdAt: { gte: startDate } },
+      where: {
+        ...(advertiserId ? { ad: { advertiserId } } : {}),
+        createdAt: { gte: startDate },
+      },
       _count: { id: true },
-      _sum: { clicked: true },
     });
     return NextResponse.json({ metrics });
   } catch {
