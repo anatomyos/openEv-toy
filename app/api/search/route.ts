@@ -120,7 +120,7 @@ export async function POST(request: Request) {
       articleContent += continuation.choices[0].message.content || '';
       finishReason = continuation.choices[0].finish_reason;
     }
-
+    
     let parsedArticles: IncomingArticle[] = [];
     let rawArticleContent: string | null = null;
     try {
