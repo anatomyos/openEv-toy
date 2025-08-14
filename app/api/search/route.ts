@@ -3,6 +3,7 @@ import openai from '@/src/lib/openai';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { prisma } from '@/app/lib/prisma';
+import { jsonrepair } from 'jsonrepair';
 
 interface MedicalArticle {
   id: string;
@@ -72,7 +73,26 @@ export async function POST(request: Request) {
       response_format: { type: 'json_object' },
     });
 
-    const articleContent = articleResponse.choices[0].message.content || '{}';
+    let articleContent = articleResponse.choices[0].message.content || '';
+    let finishReason = articleResponse.choices[0].finish_reason;
+
+    // If the response was truncated, request continuations until complete
+    while (finishReason === 'length') {
+      const continuation = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          { role: 'user', content: searchPrompt },
+          { role: 'assistant', content: articleContent },
+          { role: 'user', content: 'Please continue.' },
+        ],
+        temperature: 0.3,
+        max_tokens: 1000,
+        response_format: { type: 'json_object' },
+      });
+      articleContent += continuation.choices[0].message.content || '';
+      finishReason = continuation.choices[0].finish_reason;
+    }
+
     let parsedArticles: IncomingArticle[] = [];
     let rawArticleContent: string | null = null;
     try {
@@ -81,8 +101,17 @@ export async function POST(request: Request) {
       };
       parsedArticles = Array.isArray(articles) ? articles : [];
     } catch (e) {
-      console.error('Failed to parse article response', e, articleContent);
       rawArticleContent = articleContent;
+      console.error('Failed to parse article response', e, articleContent);
+      try {
+        const repaired = jsonrepair(articleContent);
+        const { articles = [] } = JSON.parse(repaired) as {
+          articles?: IncomingArticle[];
+        };
+        parsedArticles = Array.isArray(articles) ? articles : [];
+      } catch (repairError) {
+        console.error('Failed to parse article response after repair', repairError, articleContent);
+      }
     }
 
     const articles: MedicalArticle[] = [];
